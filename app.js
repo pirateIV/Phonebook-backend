@@ -3,6 +3,8 @@ const morgan = require('morgan');
 
 const app = express();
 
+app.use(express.static('dist'))
+
 // middleware for parsing json requests
 app.use(express.json());
 
@@ -33,11 +35,11 @@ let phonebookEntries = [
   },
 ];
 
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
-app.get('/', (req, res) => {
-  res.send('<h1>Hello World!</h1>');
-});
+// app.get('/', (req, res) => {
+//   res.send('<h1>Hello World!</h1>');
+// });
 
 app.get('/api/persons', (req, res) => {
   res.json(phonebookEntries);
