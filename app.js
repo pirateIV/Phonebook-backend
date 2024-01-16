@@ -1,12 +1,14 @@
 const express = require('express');
 const morgan = require('morgan');
+const cors = require('cors');
 
 const app = express();
 
-app.use(express.static('dist'))
+// app.use(express.static('dist'))
 
 // middleware for parsing json requests
 app.use(express.json());
+app.use(cors());
 
 morgan.token('body', (req) => JSON.stringify(req.body));
 
@@ -37,9 +39,9 @@ let phonebookEntries = [
 
 const PORT = process.env.PORT || 3001;
 
-// app.get('/', (req, res) => {
-//   res.send('<h1>Hello World!</h1>');
-// });
+app.get('/', (req, res) => {
+  res.send('<h1>Hello World!</h1>');
+});
 
 app.get('/api/persons', (req, res) => {
   res.json(phonebookEntries);
@@ -93,8 +95,9 @@ app.get('/api/persons/:id', (req, res) => {
 app.delete('/api/persons/:id', (req, res) => {
   const id = Number(req.params.id);
 
-  if (!phonebookEntries[id]) {
+  if (!id) {
     res.status(404).send('contact not found');
+    return;
   }
 
   phonebookEntries = phonebookEntries.filter((entry) => entry.id !== id);
@@ -108,7 +111,7 @@ const generateId = () => {
   for (let i = 0; i < 10; i++) {
     id += Math.floor(Math.random() * 10);
   }
-  return id;
+  return Number(id);
 };
 
 const checkMissingDetails = (name, number) => {
@@ -117,7 +120,7 @@ const checkMissingDetails = (name, number) => {
   }
 };
 
-const checkExisitingContact = (name) => {
+const checkExistingContact = (name) => {
   const isExistingContact = phonebookEntries.find((entry) => {
     return entry.name === name;
   });
@@ -132,7 +135,7 @@ app.post('/api/persons', (req, res) => {
 
   const newContact = { name, number, id: generateId() };
 
-  let isExisting = checkExisitingContact(name);
+  let isExisting = checkExistingContact(name);
   let isMissingDetails = checkMissingDetails(name, number);
 
   if (isExisting) {
@@ -148,6 +151,21 @@ app.post('/api/persons', (req, res) => {
   return res.status(201).json({ msg: 'new contact added', newContact });
 });
 
-app.listen(PORT, () => {
+// const editContact
+app.put('/api/persons/:id', (req, res) => {
+  const id = Number(req.params.id);
+
+  const updatedContact = req.body;
+
+  if (updatedContact) {
+    phonebookEntries = phonebookEntries.map((entry) => {
+      if (entry.id === id) {
+        return res.status(200).json({updatedContact}); 
+      }
+    });
+  }
+});     
+
+app.listen(PORT, () => { 
   console.log(`Server running on port ${PORT}`);
 });
