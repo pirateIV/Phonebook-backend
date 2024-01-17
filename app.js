@@ -72,9 +72,10 @@ const requestLogger = (req, res, next) => {
 // execute middleare for every requests
 app.use(requestLogger);
 
-// const unknownEndpoint = (req, res, next) => {
-//   res.status(400).send({ error: 'unknown endpoint' });
-// };
+// route used for unknown routes(endpoints)
+const unknownEndpoint = (req, res, next) => {
+  res.status(400).send({ error: 'unknown endpoint' });
+};
 
 // app.use(unknownEndpoint);
 
@@ -153,19 +154,23 @@ app.post('/api/persons', (req, res) => {
 
 // const editContact
 app.put('/api/persons/:id', (req, res) => {
-  const id = Number(req.params.id);
+  const contactId = Number(req.params.id);
 
-  const updatedContact = req.body;
+  const { name, number } = req.body;
 
-  if (updatedContact) {
-    phonebookEntries = phonebookEntries.map((entry) => {
-      if (entry.id === id) {
-        return res.status(200).json({updatedContact}); 
-      }
-    });
+  const contact = phonebookEntries.find((contact) => contact.id === contactId);
+
+  if (!contact) {
+    return res.status(404).json({ err: 'contact not found!' });
   }
-});     
 
-app.listen(PORT, () => { 
+  phonebookEntries = phonebookEntries.map((entry) =>
+    entry.name === name ? { ...entry, number } : entry
+  );
+
+  res.status(200).json(phonebookEntries);
+});
+
+app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
