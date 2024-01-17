@@ -53,7 +53,7 @@ app.get('/info', (req, res) => {
       <p>Phonebook has info for ${phonebookEntries.length} people</p>
       <p>${new Date()}</p>
     </div>  
-`;
+`; 
   res.send(info);
 });
 
@@ -142,7 +142,7 @@ app.post('/api/persons', (req, res) => {
   if (isExisting) {
     return res.status(400).json(isExisting);
   }
-
+ 
   if (isMissingDetails) {
     return res.status(400).json(isMissingDetails);
   }
