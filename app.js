@@ -4,7 +4,7 @@ const cors = require('cors');
 
 const app = express();
 
-app.use(express.static('dist'))
+app.use(express.static('dist'));
 
 // middleware for parsing json requests
 app.use(express.json());
@@ -13,29 +13,6 @@ app.use(cors());
 morgan.token('body', (req) => JSON.stringify(req.body));
 
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body'));
-
-let phonebookEntries = [
-  {
-    id: 1,
-    name: 'Arto Hellas',
-    number: '040-123456',
-  },
-  {
-    id: 2,
-    name: 'Ada Lovelace',
-    number: '39-44-5323523',
-  },
-  {
-    id: 3,
-    name: 'Dan Abramov',
-    number: '12-43-234345',
-  },
-  {
-    id: 4,
-    name: 'Mary Poppendieck',
-    number: '39-23-6423122',
-  },
-];
 
 const PORT = process.env.PORT || 3001;
 
@@ -53,7 +30,7 @@ app.get('/info', (req, res) => {
       <p>Phonebook has info for ${phonebookEntries.length} people</p>
       <p>${new Date()}</p>
     </div>  
-`; 
+`;
   res.send(info);
 });
 
@@ -79,17 +56,37 @@ const unknownEndpoint = (req, res, next) => {
 
 // app.use(unknownEndpoint);
 
+const mongoose = require('mongoose');
+
+if (process.argv.length < 3) {
+  console.log('password argument is required!');
+  process.exit(1);
+}
+
+const password = process.argv[2];
+
+const url = `mongodb+srv://Benjamin:${password}@cluster0.ct2wgbz.mongodb.net/contactsApp?retryWrites=true&w=majority`;
+
+mongoose.set('strictQuery', false);
+mongoose.connect(url);
+
+const Schema = mongoose.Schema;
+
+const contactSchema = new Schema({
+  name: String,
+  number: String,
+});
+
+const Contact = mongoose.model('Contact', contactSchema);
+
+// get all phonebook entries
+app.get('/api/persons', (req, res) => {});
+
 // get single phonebook entry
 app.get('/api/persons/:id', (req, res) => {
-  const id = Number(req.params.id);
-
-  const contact = phonebookEntries.find((entry) => entry.id === id);
-
-  if (!contact) {
-    res.status(404).json({ error: 'contact not found!' }).end();
-  }
-
-  res.status(201).json(contact);
+  Contact.find({}).then((contacts) => {
+    res.status(201).json(contacts);
+  });
 });
 
 // delete single phonebook entry
@@ -142,7 +139,7 @@ app.post('/api/persons', (req, res) => {
   if (isExisting) {
     return res.status(400).json(isExisting);
   }
- 
+
   if (isMissingDetails) {
     return res.status(400).json(isMissingDetails);
   }
