@@ -16,24 +16,6 @@ app.use(morgan(':method :url :status :res[content-length] - :response-time ms :b
 
 const PORT = process.env.PORT || 3001;
 
-app.get('/', (req, res) => {
-  res.send('<h1>Hello World!</h1>');
-});
-
-app.get('/api/persons', (req, res) => {
-  res.json(phonebookEntries);
-});
-
-app.get('/info', (req, res) => {
-  const info = `
-    <div>
-      <p>Phonebook has info for ${phonebookEntries.length} people</p>
-      <p>${new Date()}</p>
-    </div>  
-`;
-  res.send(info);
-});
-
 // -------- NOTE -------------
 
 // Middleware is a function that accepts three parameters
@@ -54,39 +36,36 @@ const unknownEndpoint = (req, res, next) => {
   res.status(400).send({ error: 'unknown endpoint' });
 };
 
-// app.use(unknownEndpoint);
-
-const mongoose = require('mongoose');
-
-if (process.argv.length < 3) {
-  console.log('password argument is required!');
-  process.exit(1);
-}
-
-const password = process.argv[2];
-
-const url = `mongodb+srv://Benjamin:${password}@cluster0.ct2wgbz.mongodb.net/contactsApp?retryWrites=true&w=majority`;
-
-mongoose.set('strictQuery', false);
-mongoose.connect(url);
-
-const Schema = mongoose.Schema;
-
-const contactSchema = new Schema({
-  name: String,
-  number: String,
+app.get('/', (req, res) => {
+  res.send('<h1>Hello World!</h1>');
 });
 
-const Contact = mongoose.model('Contact', contactSchema);
+app.get('/info', (req, res) => {
+  const info = `
+    <div>
+      <p>Phonebook has info for ${phonebookEntries.length} people</p>
+      <p>${new Date()}</p>
+    </div>  
+`;
+  res.send(info);
+});
 
 // get all phonebook entries
-app.get('/api/persons', (req, res) => {});
+app.get('/api/persons', (req, res) => {
+  res.status(200).json(phonebookEntries);
+});
 
 // get single phonebook entry
 app.get('/api/persons/:id', (req, res) => {
-  Contact.find({}).then((contacts) => {
-    res.status(201).json(contacts);
-  });
+  const id = Number(req.params.id);
+
+  const contact = phonebookEntries.find((entry) => entry.id === id);
+
+  if (!contact) {
+    res.status(404).json({ error: 'contact not found!' }).end();
+  }
+
+  res.status(201).json(contact);
 });
 
 // delete single phonebook entry

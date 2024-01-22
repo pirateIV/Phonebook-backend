@@ -1,70 +1,104 @@
+require('dotenv').config();
+
+const express = require('express');
+const morgan = require('morgan');
+const cors = require('cors');
+
+const app = express();
+
+// middleware for parsing json requests
+app.use(express.json());
+app.use(cors());
+
+morgan.token('body', (req) => JSON.stringify(req.body));
+
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body'));
+
+const Person = require('./models/persons');
+
 const mongoose = require('mongoose');
 
-// check if command-line arguments are provided
-if (process.argv.length < 3) {
-  console.log('Usage: node mongo.js <name> <number>');
-  process.exit(1);
+// if (process.argv.length < 3) {
+//   console.log('password argument is required!');
+//   process.exit(1);
+// }
+
+// const password = process.argv[2];
+
+const errorHandler = (res, req, next) => {
+  
 }
 
-// const [, , password, name, number] = process.argv;
-const password = process.argv[2];
+app.get('/api/persons', (req, res) => {
+  Person.find({}).then((persons) => {
+    console.log('phonebook: ');
+    persons.forEach(({ name, number }) => {
+      console.log(`${name} ${number}`);
+    });
 
-// const url = `mongodb+srv://Benjamin:${password}@cluster0.ct2wgbz.mongodb.net/noteApp?retryWrites=true&w=majority`;
-const url = `mongodb+srv://Benjamin:${password}@cluster0.ct2wgbz.mongodb.net/contactsApp?retryWrites=true&w=majority`;
-
-mongoose.set('strictQuery', false);
-mongoose.connect(url);
-
-// const noteSchema = new mongoose.Schema({
-//   content: String,
-//   important: Boolean,
-// });
-
-const contactSchema = new mongoose.Schema({
-  name: String,
-  number: String,
+    res.json(persons);
+    // mongoose.connection.close();
+  });
 });
 
-// const Note = mongoose.model('Note', noteSchema);
-const Contact = mongoose.model('Contact', contactSchema);
+app.get('/api/persons/:id', (req, res) => {
+  Person.findById(req.params.id)
+    .then((contact) => {
+      if (contact) {
+        res.json(contact);
+      } else {
+        res.status(400).end();
+      }
+    })
+    .catch((err) => {
+      console.log(err);
+      res.status(500).end();
+    });
+});
 
-// const contact = new Contact({
-//   name,
-//   number,
-// });
+app.post('/api/persons', (req, res, next) => {
+  const { name, number } = req.body;
 
-// contact.save().then((data) => {
-//   console.log('contact added to database');
-//   const { name, number } = data;
-//   console.log(`added ${name} number ${number} to phonebook`);
-//   mongoose.connection.close();
-// });
+  if (!name && !number) {
+    return res.status(400).send({ error: 'content is missing' });
+  }
 
-Contact.find({}).then((persons) => {
-  // console.log(persons);
-  console.log('phonebook:');
-  persons.forEach((person) => {
-    console.log(`${person.name} ${person.number}`);
+  const person = new Person({
+    name,
+    number,
   });
-  mongoose.connection.close();
-}); 
+  person
+    .save()
+    .then((newContact) => {
+      res.json(newContact);
+    })
+    .catch((error) => {
+      next(error);
+    });
+});
 
-// const note = new Note({
-//   content: 'Coding is Easy',
-//   important: false,
-// });
+app.delete('/api/persons/:id', (req, res) => {
+  Person.findByIdAndDelete(req.params.id).then((err, docs) => {
+    if (err) {
+      console.log(err);
+      res.status(204).end();
+    } else {
+      console.log(`deleted ${docs}`);
+    }
+  });
+});
 
-// note.save().then(result => {
-//   console.log('note saved');
-//   console.log(result)
-//   mongoose.connection.close();
-// }).catch((err) => {
-//   console.log(err)
-// })
+app.put('/api/persons/:id', (req, res) => {
+  const { name, number } = req.body;
 
-// Note.find({ important: false, content: 'Coding is Easy' }).then((result) => {
-//   result.forEach((note) => {
-//     console.log(note);
-//   });
-//   mongoose.connection.close();
-// });
+  Person.findByIdAndUpdate(req.params.id, { name, number }, { new: true }).then(
+    (contact) => {
+      res.json(contact);
+    }
+  );
+});
+
+const PORT = process.env.PORT;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
