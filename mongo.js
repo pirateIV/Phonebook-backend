@@ -25,9 +25,17 @@ const mongoose = require('mongoose');
 
 // const password = process.argv[2];
 
-const errorHandler = (res, req, next) => {
-  
-}
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message);
+
+  if (error.name === 'CastError') {
+    return response.status(400).send({ error: 'malformatted id' });
+  } else if (error.name === 'ValidationError') {
+    return response.status(400).send({ error: error.message });
+  }
+
+  next();
+};
 
 app.get('/api/persons', (req, res) => {
   Person.find({}).then((persons) => {
@@ -37,7 +45,6 @@ app.get('/api/persons', (req, res) => {
     });
 
     res.json(persons);
-    // mongoose.connection.close();
   });
 });
 
@@ -72,30 +79,34 @@ app.post('/api/persons', (req, res, next) => {
     .then((newContact) => {
       res.json(newContact);
     })
-    .catch((error) => {
-      next(error);
-    });
+    .catch((error) => console.log(error));
 });
 
-app.delete('/api/persons/:id', (req, res) => {
-  Person.findByIdAndDelete(req.params.id).then((err, docs) => {
-    if (err) {
-      console.log(err);
-      res.status(204).end();
-    } else {
-      console.log(`deleted ${docs}`);
-    }
-  });
+app.delete('/api/persons/:id', (req, res, next) => {
+  Person.findByIdAndDelete(req.params.id)
+    .then((err, docs) => {
+      if (err) {
+        console.log(err);
+        res.status(204).end();
+      } else {
+        console.log(`deleted ${docs}`);
+      }
+    })
+    .catch((error) => next(error));
 });
 
-app.put('/api/persons/:id', (req, res) => {
+app.put('/api/persons/:id', (req, res, next) => {
   const { name, number } = req.body;
 
-  Person.findByIdAndUpdate(req.params.id, { name, number }, { new: true }).then(
-    (contact) => {
-      res.json(contact);
-    }
-  );
+  Person.findByIdAndUpdate(req.params.id, { name, number }, { new: true })
+    .then((contact) => {
+      if (contact) {
+        res.json(contact);
+      } else {
+        res.status(404).end();
+      }
+    })
+    .catch((error) => res.json(error));
 });
 
 const PORT = process.env.PORT;
