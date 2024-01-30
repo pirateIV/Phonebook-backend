@@ -3,11 +3,14 @@ require('dotenv').config();
 const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
+const requestLogger = require('./middleware/requestLogger');
 
 const app = express();
 
 // middleware for parsing json requests
+app.use(express.static('dist'));
 app.use(express.json());
+app.use(requestLogger);
 app.use(cors());
 
 morgan.token('body', (req) => JSON.stringify(req.body));
@@ -18,24 +21,16 @@ const Person = require('./models/persons');
 
 const mongoose = require('mongoose');
 
-// if (process.argv.length < 3) {
-//   console.log('password argument is required!');
-//   process.exit(1);
-// }
-
-// const password = process.argv[2];
-
-const errorHandler = (error, request, response, next) => {
-  console.error(error.message);
-
-  if (error.name === 'CastError') {
-    return response.status(400).send({ error: 'malformatted id' });
-  } else if (error.name === 'ValidationError') {
-    return response.status(400).send({ error: error.message });
-  }
-
-  next();
-};
+app.get('/info', async (req, res) => {
+  const count = await Person.countDocuments();
+  const info = `
+    <div>
+      <p>Phonebook has info for ${count} people</p>
+      <p>${new Date()}</p>
+    </div>  
+  `;
+  res.send(info);
+});
 
 app.get('/api/persons', (req, res) => {
   Person.find({}).then((persons) => {
@@ -48,7 +43,7 @@ app.get('/api/persons', (req, res) => {
   });
 });
 
-app.get('/api/persons/:id', (req, res) => {
+app.get('/api/persons/:id', (req, res, next) => {
   Person.findById(req.params.id)
     .then((contact) => {
       if (contact) {
@@ -57,10 +52,7 @@ app.get('/api/persons/:id', (req, res) => {
         res.status(400).end();
       }
     })
-    .catch((err) => {
-      console.log(err);
-      res.status(500).end();
-    });
+    .catch((error) => next(error));
 });
 
 app.post('/api/persons', (req, res, next) => {
@@ -79,7 +71,7 @@ app.post('/api/persons', (req, res, next) => {
     .then((newContact) => {
       res.json(newContact);
     })
-    .catch((error) => console.log(error));
+    .catch((error) => next(error));
 });
 
 app.delete('/api/persons/:id', (req, res, next) => {
@@ -98,7 +90,13 @@ app.delete('/api/persons/:id', (req, res, next) => {
 app.put('/api/persons/:id', (req, res, next) => {
   const { name, number } = req.body;
 
-  Person.findByIdAndUpdate(req.params.id, { name, number }, { new: true })
+  const contact = { name, number };
+
+  Person.findByIdAndUpdate(req.params.id, contact, {
+    new: true,
+    runValidators: true,
+    context: 'query',
+  })
     .then((contact) => {
       if (contact) {
         res.json(contact);
@@ -106,8 +104,23 @@ app.put('/api/persons/:id', (req, res, next) => {
         res.status(404).end();
       }
     })
-    .catch((error) => res.json(error));
+    .catch((error) => next(error));
 });
+
+const errorHandler = (err, req, res, next) => {
+  console.log(err.name);
+  console.log(err.message);
+
+  if (err.name === 'CastError') {
+    return res.status(400).send({ error: 'malformatted id' });
+  } else if (err.name === 'ValidationError') {
+    return res.status(400).json({ error: err.message });
+  }
+
+  next(err);
+};
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
