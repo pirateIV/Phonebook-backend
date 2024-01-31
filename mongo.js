@@ -19,8 +19,6 @@ app.use(morgan(':method :url :status :res[content-length] - :response-time ms :b
 
 const Person = require('./models/persons');
 
-const mongoose = require('mongoose');
-
 app.get('/info', async (req, res) => {
   const count = await Person.countDocuments();
   const info = `
